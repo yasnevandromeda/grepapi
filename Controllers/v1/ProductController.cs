@@ -87,7 +87,11 @@ namespace grepapi.Controllers
             var pm = ProductCacheManager.GetProductCache(_memoryCache, _grepContext);
             var catalogId = shop.CatalogId.Value;
             var allProducts = pm.Products[catalogId].ProductList;
-
+            foreach(var p in allProducts)
+            {
+                p.ShopId = shopId;
+                p.ShopName = shop.ShopName;
+            }
             return allProducts;
         }
 
@@ -325,40 +329,57 @@ namespace grepapi.Controllers
 
                 foreach(var p in pm.Products[catalogId].ProductList)
                 {
-                    var promoP = new Product()
+                    if(p.Promo == 1)
                     {
-                        ProductId = p.ProductId,
-                        ShopId = shopId,
-                        ShopName = shop.ShopName,
-                        ProductName = p.ProductName,
-                        Price = p.Price,
-                        Picture = p.Picture,
-                        PictureExt = p.PictureExt,
-                        PictureHeight = p.PictureHeight,
-                        PictureWidth = p.PictureWidth
-                    };
-                    allProducts.Add(promoP);
+                        var promoP = new Product()
+                        {
+                            ProductId = p.ProductId,
+                            ShopId = shopId,
+                            ShopName = shop.ShopName,
+                            ProductName = p.ProductName,
+                            Price = p.Price,
+                            Picture = p.Picture,
+                            PictureExt = p.PictureExt,
+                            PictureHeight = p.PictureHeight,
+                            PictureWidth = p.PictureWidth
+                        };
+                        allProducts.Add(promoP);
+                    }                    
                 }
-
-          //      allProducts.AddRange(pm.Products[catalogId].ProductList.Where(p => p.Promo == 1).ToList());
             }
 
             if (allProducts.Count == 0)
-                return res; 
+                return res;
+
+            if (allProducts.Count <= 8)
+                return allProducts;
 
             int cnt = 0;
-            while(res.Count < 5)
+            while(res.Count < 8)
             {
-                cnt++;
-                if (cnt == 1000)
-                    break;
-                int index = (new Random()).Next(allProducts.Count-1);
-                var p = allProducts[index];
-                if(!resIds.Contains(p.ProductId))
+                Shuffle(randomShops);
+
+                foreach(var s in randomShops)
                 {
-                    res.Add(p);
-                    resIds.Add(p.ProductId);
+                    var products = allProducts.Where(p => p.ShopId == s
+                                    && !resIds.Contains(p.ProductId)).ToList();
+
+                    if (products.Count > 0)
+                    {
+                        int index = (new Random()).Next(products.Count - 1);
+                        var p = products[index];
+                        if (!resIds.Contains(p.ProductId))
+                        {
+                            res.Add(p);
+                            resIds.Add(p.ProductId);
+                        }
+                    }
+
+                    cnt++;
                 }
+                
+                if (cnt == 2000)
+                    break;
             }
 
             return res;
